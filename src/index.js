@@ -1,9 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const {PORT, FLIGHT_SEARCH_REQUEST_URL} = require('./config/server-config');
 const morgan = require('morgan');
 const { rateLimit } = require('express-rate-limit');
 const { createProxyMiddleware } = require('http-proxy-middleware')
+
+const {PORT, FLIGHT_SEARCH_REQUEST_URL, AUTH_SERVICE_REQUEST_URL, BOOKING_SERVICE_REQUEST_URL, REMAINDER_SERVICE_REQUEST_URL} = require('./config/server-config');
+const { limiter } = require('./config/rateLimiter-config');
+
 async function setupAndStartServer(){
 
     const app = express();
@@ -12,14 +15,12 @@ async function setupAndStartServer(){
 
     app.use(morgan('combined'));
 
-    const limiter = {
-        windowMs: 5 * 60 * 1000,
-        max: 5
-    }
-
+    // Limit each IP to 5 requests per window (here, per 5 minutes).
     app.use(rateLimit(limiter));
 
-    app.use('/searchService', createProxyMiddleware({target: FLIGHT_SEARCH_REQUEST_URL, changeOrigin: true}))
+    app.use('/searchService', createProxyMiddleware({target: FLIGHT_SEARCH_REQUEST_URL, changeOrigin: true}));
+    app.use('/bookingService', createProxyMiddleware({target: BOOKING_SERVICE_REQUEST_URL, changeOrigin: true}));
+    app.use('/remainderService', createProxyMiddleware({target: REMAINDER_SERVICE_REQUEST_URL, changeOrigin: true}));
     
     app.get('/hello', (req, res) => {
         return res.status(200).json({
